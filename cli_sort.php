@@ -18,4 +18,6 @@ while (empty($output)) {
 }
 
 $MediaSorter = new MediaSorter2($input, $output);
-$MediaSorter->sort();
+$datetimes = $MediaSorter->analyse();
+
+print_r($datetimes);

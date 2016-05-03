@@ -10,7 +10,21 @@ class MediaSorter2
 
     private $input = null;
     private $output = null;
+    private $masks = array(
+        '(\d{4})/(\d{2})/(\d{2})/(.*).jpg' => array('Y', 'm', 'd'),
+        'IMG_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2}).jpg' => array('Y', 'm', 'd', 'H', 'i', 's'),
+        'IMG_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})_(.*).dng' => array('Y', 'm', 'd', 'H', 'i', 's'),
+        '(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2}).jpg' => array('Y', 'm', 'd', 'H', 'i', 's'),
+        '(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})_(.*).jpg' => array('Y', 'm', 'd', 'H', 'i', 's'),
+        'VID_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2}).mp4' => array('Y', 'm', 'd', 'H', 'i', 's')
+    );
 
+    /**
+     * 
+     * @param type $input
+     * @param type $output
+     * @throws Exception
+     */
     public function __construct($input = null, $output = null)
     {
         if (empty($input)) {
@@ -28,12 +42,20 @@ class MediaSorter2
         }
     }
 
-    public function sort()
+    /**
+     * 
+     */
+    public function analyse()
     {
-        $this->browse($this->input);
+        return $this->browse($this->input);
     }
 
-    private function browse($directory)
+    /**
+     * 
+     * @param type $directory
+     * @throws Exception
+     */
+    private function browse($directory, $datetimes = array())
     {
         $handle = opendir($directory);
 
@@ -41,11 +63,11 @@ class MediaSorter2
             while (false !== ($entry = readdir($handle))) {
                 if (!in_array($entry, array('.', '..'))) {
                     if (is_file($directory . DIRECTORY_SEPARATOR . $entry)) {
-                        $this->analyse($directory . DIRECTORY_SEPARATOR . $entry);
+                        $datetimes[] = $this->retrieveDates($directory . DIRECTORY_SEPARATOR . $entry);
                     }
 
                     if (is_dir($directory . DIRECTORY_SEPARATOR . $entry)) {
-                        $this->browse($directory . DIRECTORY_SEPARATOR . $entry);
+                        $this->browse($directory . DIRECTORY_SEPARATOR . $entry, $datetimes);
                     }
                 }
             }
@@ -54,13 +76,63 @@ class MediaSorter2
         } else {
             throw new Exception('Cannot open directory "' . $directory . '"');
         }
+        
+        return $datetimes;
     }
 
-    private function analyse($file)
+    /**
+     * 
+     * @param type $file
+     * @return type
+     */
+    private function retrieveDates($file)
     {
-        echo '===> ' . $file . "\n";
-        $pathinfo = pathinfo($file);
-        print_r($pathinfo);
+        $datetime = array(
+            'file' => $file,
+            'filename' => null,
+            'exif_datetimeoriginal' => null,
+            'exif_filedatetime' => null,
+            'modified' => null
+        );
+
+        foreach ($this->masks as $pattern => $orders) {
+            if (preg_match('#' . $pattern . '#', $file, $matches)) {
+                $datetimeValues = array(
+                    'Y' => date('Y'),
+                    'm' => date('m'),
+                    'd' => date('d'),
+                    'H' => date('H'),
+                    'i' => date('i'),
+                    's' => date('s'));
+
+                foreach ($orders as $num => $format) {
+                    $datetimeValues[$format] = $matches[$num + 1];
+                }
+
+                /* Try filename */
+                $datetime['filename'] = mktime($datetimeValues['H'], $datetimeValues['i'], $datetimeValues['s'], $datetimeValues['m'], $datetimeValues['d'], $datetimeValues['Y']);
+
+                /* Try EXIF */
+                $exif = @read_exif_data($file);
+
+                if (false !== $exif) {
+                    if (!empty($exif['DateTimeOriginal'])) {
+                        $datetime['exif_datetimeoriginal'] = strtotime($exif['DateTimeOriginal']);
+                    } 
+                    
+                    if (!empty($exif['FileDateTime'])) {
+                        $datetime['exif_filedatetime'] = $exif['FileDateTime'];
+                    }
+                }
+
+                /* Try Last Modified Date */
+                $datetime['modified'] = filemtime($file);
+            }
+        }
+
+        //print_r($datetime);
+        
+        return $datetime;
     }
 
 }
