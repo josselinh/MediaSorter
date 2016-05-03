@@ -12,7 +12,8 @@ $CliInteractive->display('** Media Sorter Script **', 2);
 $options = array(
     'input' => null,
     'output' => null,
-    'media' => null);
+    'media' => null,
+    'method' => null);
 
 /* Retrieve options */
 for ($index = 1; $index < $argc; $index++) {
@@ -20,31 +21,14 @@ for ($index = 1; $index < $argc; $index++) {
     $options[$option] = $value;
 }
 
-/* Check options */
-$continue = true;
-if (empty($options['input']) || !is_dir($options['input'])) {
-    $CliInteractive->display('/!\ Input directory option is empty or is not a directory');
-    $continue = false;
-}
+/* Call methods & sort */
+try {
+    $MediaSorter->setInput($options['input']);
+    $MediaSorter->setOutput($options['output']);
+    $MediaSorter->setMedia($options['media']);
+    $MediaSorter->setMethod($options['method']);
 
-if (empty($options['output'])) {
-    $CliInteractive->display('/!\ Output directory option is empty');
-    $continue = false;
-} elseif (!is_dir($options['output'])) {
-    $CliInteractive->display('/!\ Output directory does not exist, creating ... ', 0);
-    
-    if (mkdir($options['output'], 0777, true)) {
-        $CliInteractive->display('Done!');
-    } else {
-        $CliInteractive->display('Failed!');
-        $continue = false;
-    }
+    $MediaSorter->sort();
+} catch (Exception $e) {
+    $CliInteractive->error('/!\ ' . $e->getMessage());
 }
-
-/* Options validated */
-if (false === $continue) {
-    $CliInteractive->error('Aborted');
-}
-
-/* Browse input directory */
-$MediaSorter->browseDirectory($options['input'], $options['output'], $options['media']);
