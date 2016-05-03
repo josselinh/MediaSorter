@@ -1,4 +1,4 @@
-*** Media Sorter Script ***
+<pre>*** Media Sorter Script ***
 Array
 (
     [0] => Array
@@ -109,3 +109,4 @@ Array
             [modified] => 1462190778
         )
 )
+</pre>
