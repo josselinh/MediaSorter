@@ -7,25 +7,32 @@
  */
 class CliInteractive
 {
-
-    public function ask($question = '', $possibilies = array(), $default = null)
+    
+    public function ask($question = '', $possibilities = array(), $default = null)
     {
-        $question .= ' ';
-        $response = null;
+        $fullQuestion = $question;
         
-        if (!empty($possibilies) && !is_null($default)) {
-            $question .= sprintf('[%s] ', $default);
+        if (!empty($possibilities)) {
+            $fullQuestion .= ' ('.implode(', ', $possibilities).')';
         }
         
-        while (!in_array($response, $possibilies)) {
-            $this->display($question, 0);
-            $response = trim(fgets(STDIN));
-            
-            if (empty($response)) {
-                $response = $default;
+        if (!is_null($default)) {
+            $fullQuestion .= ' ['.$default.']';
+        }
+        
+        $this->display($fullQuestion. ' ', 0);
+        $response = trim(fgets(STDIN));
+                
+        if (0 === strlen($response) && !is_null($default)) {
+            $response = $default;
+        }
+        
+        if (!empty($possibilities)) {
+            while (!in_array($response, $possibilities)) {
+                $response = $this->ask($question, $possibilities, $default);
             }
         }
-
+        
         return $response;
     }
 

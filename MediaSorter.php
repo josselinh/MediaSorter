@@ -9,12 +9,13 @@ class MediaSorter
 {
 
     const MEDIA = array('jpg', 'mp4');
-    const METHOD = array('exif', 'lastModified', 'directory');
+    const METHOD = array('exif', 'lastModified', 'directory', 'name');
 
     private $input = null;
     private $output = null;
     private $media = null;
     private $method = null;
+    private $prefix = array('jpg' => 'IMAGE_', 'mp4' => 'VIDEO_');
 
     /**
      * 
@@ -118,10 +119,16 @@ class MediaSorter
 
     private function analyseFile($file)
     {
-        echo '*** ' . $file . ' ***' . "\n";
-
         if ('exif' === $this->method) {
             $this->analyseByExif($file);
+        }
+
+        if ('lastModified' === $this->method) {
+            $this->analyseByLastModified($file);
+        }
+        
+        if ('name' === $this->method) {
+            echo "hoho";
         }
     }
 
@@ -145,37 +152,44 @@ class MediaSorter
 
             /* OK */
             if (!empty($datetime)) {
-                echo date('Y-m-d H:i:s', $datetime) . "\n";
                 $this->newFile($file, $datetime);
             }
         }
     }
 
+    private function analyseByLastModified($file)
+    {
+        $this->newFile($file, filemtime($file));
+    }
+
     private function newFile($file, $datetime)
     {
-        $newDirectory = $this->output . DIRECTORY_SEPARATOR . date('Y', $datetime) . DIRECTORY_SEPARATOR . date('m', $datetime) . DIRECTORY_SEPARATOR . date('d', $datetime) . DIRECTORY_SEPARATOR;
+        $newFile = $this->output . DIRECTORY_SEPARATOR .
+                date('Y', $datetime) . DIRECTORY_SEPARATOR .
+                date('m', $datetime) . DIRECTORY_SEPARATOR .
+                date('d', $datetime) . DIRECTORY_SEPARATOR .
+                $this->prefix[$this->media] . date('Ymd_His', $datetime);
 
-        switch ($this->media) {
-            case 'jpg':
-                $newFile = 'IMG_' . date('Ymd', $datetime) . '_' . date('His', $datetime) . '.jpg';
-                echo $newFile . "\n";
-                break;
-        }
-
-        if (!is_dir($newDirectory)) {
-            if (!mkdir($newDirectory, 0777, true)) {
-                throw new Exception('Cannot create sub directories');
+        /* Check if file already exists */
+        if (is_file($newFile . '.' . $this->media)) {
+            $newFile .= '_' . date('Ymd_His');
+        } else {
+            /* If the file does not exist, so need to create directories */
+            if (!is_dir(dirname($newFile . '.' . $this->media))) {
+                if (!mkdir(dirname($newFile . '.' . $this->media), 0777, true)) {
+                    echo dirname($newFile . '.' . $this->media);
+                    throw new Exception('Cannot create sub directories');
+                }
             }
         }
 
-        if (is_file($newDirectory . $newFile)) {
-            throw new Exception('File already exists');
-        }
-
-        if (copy($file, $newDirectory . $newFile)) {
-            if (!touch($newDirectory . $newFile, $datetime)) {
+        /* Move */
+        if (rename($file, $newFile . '.' . $this->media)) {
+            if (!touch($newFile . '.' . $this->media, $datetime)) {
                 throw new Exception('Cannot change "last date modified" file');
             }
+        } else {
+            throw new Exception('Cannot move file');
         }
     }
 
