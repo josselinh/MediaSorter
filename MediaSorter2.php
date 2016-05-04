@@ -7,9 +7,22 @@
  */
 class MediaSorter2
 {
-
+    /**
+     *
+     * @var type 
+     */
     private $input = null;
+    
+    /**
+     *
+     * @var type 
+     */
     private $output = null;
+    
+    /**
+     *
+     * @var type 
+     */
     private $masks = array(
         '(\d{4})/(\d{2})/(\d{2})/(.*).jpg' => array('Y', 'm', 'd'),
         'IMG_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2}).jpg' => array('Y', 'm', 'd', 'H', 'i', 's'),
@@ -22,10 +35,10 @@ class MediaSorter2
     /**
      * 
      * @param type $input
-     * @param type $output
+     * @return type
      * @throws Exception
      */
-    public function __construct($input = null, $output = null)
+    public function analyse($input = null)
     {
         if (empty($input)) {
             throw new Exception('"Input" option is empty');
@@ -35,18 +48,6 @@ class MediaSorter2
             $this->input = $input;
         }
 
-        if (empty($output)) {
-            throw new Exception('"Output" option is empty');
-        } else {
-            $this->output = $output;
-        }
-    }
-
-    /**
-     * 
-     */
-    public function analyse()
-    {
         return $this->browse($this->input);
     }
 
@@ -55,7 +56,7 @@ class MediaSorter2
      * @param type $directory
      * @throws Exception
      */
-    private function browse($directory, $datetimes = array())
+    private function browse($directory = null, $datetimes = array())
     {
         $handle = opendir($directory);
 
@@ -76,7 +77,7 @@ class MediaSorter2
         } else {
             throw new Exception('Cannot open directory "' . $directory . '"');
         }
-        
+
         return $datetimes;
     }
 
@@ -85,7 +86,7 @@ class MediaSorter2
      * @param type $file
      * @return type
      */
-    private function retrieveDates($file)
+    private function retrieveDates($file = null)
     {
         $datetime = array(
             'file' => $file,
@@ -118,8 +119,8 @@ class MediaSorter2
                 if (false !== $exif) {
                     if (!empty($exif['DateTimeOriginal'])) {
                         $datetime['exif_datetimeoriginal'] = strtotime($exif['DateTimeOriginal']);
-                    } 
-                    
+                    }
+
                     if (!empty($exif['FileDateTime'])) {
                         $datetime['exif_filedatetime'] = $exif['FileDateTime'];
                     }
@@ -131,8 +132,23 @@ class MediaSorter2
         }
 
         //print_r($datetime);
-        
+
         return $datetime;
+    }
+
+    /**
+     * 
+     * @param type $datetimes
+     * @param type $output
+     * @throws Exception
+     */
+    public function execute($datetimes = array(), $output = null)
+    {
+        if (empty($output)) {
+            throw new Exception('"Output" option is empty');
+        } else {
+            $this->output = $output;
+        }
     }
 
 }
