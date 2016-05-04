@@ -7,18 +7,19 @@
  */
 class MediaSorter2
 {
+
     /**
      *
      * @var type 
      */
     private $input = null;
-    
+
     /**
      *
      * @var type 
      */
     private $output = null;
-    
+
     /**
      *
      * @var type 
@@ -95,6 +96,8 @@ class MediaSorter2
             'exif_filedatetime' => null,
             'modified' => null
         );
+        
+        echo $file."\n";
 
         foreach ($this->masks as $pattern => $orders) {
             if (preg_match('#' . $pattern . '#', $file, $matches)) {
@@ -148,6 +151,46 @@ class MediaSorter2
             throw new Exception('"Output" option is empty');
         } else {
             $this->output = $output;
+        }
+
+        foreach ($datetimes as $datetime) {
+
+            $pathinfo = pathinfo($datetime['file']);
+
+
+            $newFile = date('Ymd_His', $datetime['datetime']);
+
+            switch ($pathinfo['extension']) {
+                case 'jpg':
+                    $newFile = 'IMG_' . $newFile . '.jpg';
+                    break;
+
+                case 'dng':
+                    $newFile = 'IMG_' . $newFile . '.dng';
+                    break;
+
+                case 'mp4':
+                    $newFile = 'VID_' . $newFile . '.mp4';
+                    break;
+
+                default:
+                    throw new Exception('What ???');
+                    break;
+            }
+
+            $newDirectory = $output . DIRECTORY_SEPARATOR . date('Y', $datetime['datetime']) . DIRECTORY_SEPARATOR . date('m', $datetime['datetime']) . DIRECTORY_SEPARATOR . date('d', $datetime['datetime']) . DIRECTORY_SEPARATOR;
+
+            if (!is_dir($newDirectory)) {
+                if (!mkdir($newDirectory, 0777, true)) {
+                    
+                }
+            }
+
+            if (!is_file($newDirectory . $newFile)) {
+                if (rename($datetime['file'], $newDirectory . $newFile)) {
+                    touch($newDirectory . $newFile, $datetime['datetime']);
+                }
+            }
         }
     }
 
