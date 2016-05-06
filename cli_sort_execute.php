@@ -1,7 +1,7 @@
 <?php
 
 require_once './CliInteractive.php';
-require_once './MediaSorter2.php';
+require_once './MediaSorter.php';
 
 $input = (!empty($argv[1]) ? $argv[1] : null);
 $output = (!empty($argv[2]) ? $argv[2] : null);
@@ -17,7 +17,7 @@ while (empty($output)) {
     $output = $CliInteractive->ask('Output?');
 }
 
-$MediaSorter = new MediaSorter2();
+$MediaSorter = new MediaSorter();
 
 /* Read file */
 $handle = fopen($input, 'r');

@@ -2,7 +2,7 @@
 
 /* Requires */
 require_once './CliInteractive.php';
-require_once './MediaSorter2.php';
+require_once './MediaSorter.php';
 
 /* Start */
 $CliInteractive = new CliInteractive();
@@ -23,7 +23,7 @@ if (!in_array($output, array('print', 'file', 'debug'))) {
 }
 
 /* Analyse input directory */
-$MediaSorter = new MediaSorter2();
+$MediaSorter = new MediaSorter();
 
 try {
     $datetimes = $MediaSorter->analyse($input);

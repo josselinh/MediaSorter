@@ -1,5 +1,9 @@
 <?php
 
+if (!defined('DS')) {
+    define('DS', DIRECTORY_SEPARATOR);
+}
+
 /**
  * Description of MediaSorter
  *
@@ -8,189 +12,240 @@
 class MediaSorter
 {
 
-    const MEDIA = array('jpg', 'mp4');
-    const METHOD = array('exif', 'lastModified', 'directory', 'name');
-
-    private $input = null;
-    private $output = null;
-    private $media = null;
-    private $method = null;
-    private $prefix = array('jpg' => 'IMAGE_', 'mp4' => 'VIDEO_');
-
     /**
-     * 
-     * @param type $input
-     * @param type $output
-     * @param type $media
-     * @param type $method
+     *
+     * @var type 
      */
-    public function __construct($input = null, $output = null, $media = 'jpg', $method = 'exif')
-    {
-        if (!empty($input) && !empty($output)) {
-            $this->setInput($input);
-            $this->setOutput($output);
-            $this->setMedia($media);
-            $this->setMethod($method);
-        }
-    }
+    private $input = null;
+
+    /**
+     *
+     * @var type 
+     */
+    private $masks = array(
+        '(\d{4})/(\d{2})/(\d{2})/(.*).(jpg|dng|mp4)' => array('Y' => 1, 'm' => 2, 'd' => 3),
+        '(IMG|VID)_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})((_|~).*)?.(jpg|dng|mp4)' => array('Y' => 2, 'm' => 3, 'd' => 4, 'H' => 5, 'i' => 6, 's' => 7),
+        '(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})(_.*)?.(jpg|dng|mp4)' => array('Y' => 1, 'm' => 2, 'd' => 3, 'H' => 4, 'i' => 5, 's' => 6),
+        '(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})_(.*).jpg' => array('Y' => 1, 'm' => 2, 'd' => 3, 'H' => 4, 'i' => 5, 's' => 6),
+    );
+
+    /**
+     *
+     * @var type 
+     */
+    private $mkdir_mode = 0777;
+    
+    /**
+     *
+     * @var type 
+     */
+    private $file_name_prefix = array('jpg' => 'IMG_', 'dng' => 'IMG_', 'mp4' => 'VID_');
+    
+    /**
+     *
+     * @var type 
+     */
+    private $file_name_suffix = array('jpg' => '', 'dng' => '', 'mp4' => '');
+
+    /**
+     *
+     * @var type 
+     */
+    private $errors = array();
 
     /**
      * 
      * @param type $input
+     * @return type
      * @throws Exception
      */
-    public function setInput($input = null)
+    public function analyse($input = null)
     {
         if (empty($input)) {
             throw new Exception('"Input" option is empty');
         } elseif (!is_dir($input)) {
-            throw new Exception('"Input" option is not a valid directory');
+            throw new Exception('"Input" directory is not valid');
         } else {
             $this->input = $input;
         }
+
+        return $this->browse($this->input);
     }
 
     /**
      * 
-     * @param type $output
+     * @param type $directory
      * @throws Exception
      */
-    public function setOutput($output = null)
+    private function browse($directory = null, &$datetimes = array())
     {
-        if (empty($output)) {
-            throw new Exception('"Output" option is empty');
-        } elseif (!is_dir($output) && !mkdir($output, 0777, true)) {
-            throw new Exception('The "output" directory cannot be created');
-        } else {
-            $this->output = $output;
-        }
-    }
-
-    /**
-     * 
-     * @param type $media
-     * @throws Exception
-     */
-    public function setMedia($media = 'jpg')
-    {
-        if (empty($media)) {
-            throw new Exception('"Media" option is empty');
-        } elseif (!in_array($media, self::MEDIA)) {
-            throw new Exception('"Media" option is not a valid type');
-        } else {
-            $this->media = $media;
-        }
-    }
-
-    /**
-     * 
-     * @param type $method
-     * @throws Exception
-     */
-    public function setMethod($method = 'exif')
-    {
-        if (empty($method)) {
-            throw new Exception('"Method" option is empty');
-        } elseif (!in_array($method, self::METHOD)) {
-            throw new Exception('"Method" option is not a valid method');
-        } else {
-            $this->method = $method;
-        }
-    }
-
-    public function sort()
-    {
-        $handle = opendir($this->input);
+        $handle = opendir($directory);
 
         if ($handle) {
-            while (false !== ($file = readdir($handle))) {
-                $pathinfo = pathinfo($this->input . DIRECTORY_SEPARATOR . $file);
+            while (false !== ($entry = readdir($handle))) {
+                if (!in_array($entry, array('.', '..'))) {
+                    if (is_file($directory . DIRECTORY_SEPARATOR . $entry)) {
+                        if (false !== ($dates = $this->retrieveDates($directory . DIRECTORY_SEPARATOR . $entry))) {
+                            $datetimes[] = $dates;
+                        }
+                    }
 
-                if ($this->media === $pathinfo['extension']) {
-                    $this->analyseFile($this->input . DIRECTORY_SEPARATOR . $file);
+                    if (is_dir($directory . DIRECTORY_SEPARATOR . $entry)) {
+                        $this->browse($directory . DIRECTORY_SEPARATOR . $entry, $datetimes);
+                    }
                 }
             }
 
             closedir($handle);
         } else {
-            throw new Exception('Could not open "input" directory');
+            throw new Exception('Cannot open directory "' . $directory . '"');
         }
+
+        return $datetimes;
     }
 
-    private function analyseFile($file)
+    /**
+     * 
+     * @param type $file
+     * @return type
+     */
+    private function retrieveDates($file = null)
     {
-        if ('exif' === $this->method) {
-            $this->analyseByExif($file);
-        }
+        $found = false;
 
-        if ('lastModified' === $this->method) {
-            $this->analyseByLastModified($file);
-        }
-        
-        if ('name' === $this->method) {
-            echo "hoho";
-        }
-    }
+        $dates = array(
+            'file' => $file,
+            'filename' => null,
+            'exif_datetimeoriginal' => null,
+            'exif_filedatetime' => null,
+            'modified' => filemtime($file)
+        );
 
-    private function analyseByExif($file)
-    {
-        $exif = @exif_read_data($file, null, false, false);
+        foreach ($this->masks as $pattern => $orders) {
+            if (preg_match('#' . $pattern . '#i', $file, $matches)) {
+                $found = true;
 
-        if (false !== $exif) {
-            $datetime = null;
+                $datetimeValues = array(
+                    'Y' => date('Y'),
+                    'm' => date('m'),
+                    'd' => date('d'),
+                    'H' => date('H'),
+                    'i' => date('i'),
+                    's' => date('s')
+                );
 
-            if (!empty($exif['DateTimeOriginal'])) {
-                $datetime = strtotime($exif['DateTimeOriginal']);
-            } elseif (!empty($exif['FileDateTime'])) {
-                $datetime = strtotime($exif['FileDateTime']);
+                //echo implode("\t", $matches) . "\n";
+
+                foreach ($orders as $format => $num) {
+                    $datetimeValues[$format] = $matches[$num];
+                }
+
+                /* Try filename */
+                $dates['filename'] = mktime($datetimeValues['H'], $datetimeValues['i'], $datetimeValues['s'], $datetimeValues['m'], $datetimeValues['d'], $datetimeValues['Y']);
+
+                /* Try EXIF */
+                $exif = @read_exif_data($file);
+
+                if (false !== $exif) {
+                    if (!empty($exif['DateTimeOriginal'])) {
+                        $dates['exif_datetimeoriginal'] = strtotime($exif['DateTimeOriginal']);
+                    }
+
+                    if (!empty($exif['FileDateTime'])) {
+                        $dates['exif_filedatetime'] = $exif['FileDateTime'];
+                    }
+                }
+
+                break;
             }
+        }
 
-            /* Wrong exif ? */
-            if ('1970' === date('Y', $datetime)) {
-                $datetime = null;
-            }
+        return ($found ? $dates : false);
+    }
 
-            /* OK */
-            if (!empty($datetime)) {
-                $this->newFile($file, $datetime);
+    /**
+     * 
+     * @param type $datetimes
+     * @param type $output
+     * @throws Exception
+     */
+    public function execute($datetimes = array(), $output = null)
+    {
+        /* Check params */
+        /* -> Datetimes empty */
+        if (empty($datetimes)) {
+            throw new Exception('Datetimes variable is empty');
+        }
+
+        /* -> Output directory empty */
+        if (empty($output)) {
+            throw new Exception('Output directory option is empty');
+        }
+
+        /* -> Output directory creation */
+        if (!is_dir($output)) {
+            if (!mkdir($output, $this->mkdir_mode, true)) {
+                throw new Exception('Could not create output directory');
             }
         }
-    }
 
-    private function analyseByLastModified($file)
-    {
-        $this->newFile($file, filemtime($file));
-    }
+        /* Browse datetimes */
+        foreach ($datetimes as $datetime) {
+            $pathinfo = pathinfo($datetime['file']);
+            $fileExt = $pathinfo['extension'];
 
-    private function newFile($file, $datetime)
-    {
-        $newFile = $this->output . DIRECTORY_SEPARATOR .
-                date('Y', $datetime) . DIRECTORY_SEPARATOR .
-                date('m', $datetime) . DIRECTORY_SEPARATOR .
-                date('d', $datetime) . DIRECTORY_SEPARATOR .
-                $this->prefix[$this->media] . date('Ymd_His', $datetime);
+            /* New file name */
+            $newFileNameWithoutExt = (!empty($this->file_name_prefix[$fileExt]) ? $this->file_name_prefix[$fileExt] : null) .
+                    date('Ymd_His', $datetime['datetime']) .
+                    (!empty($this->file_name_suffix[$fileExt]) ? $this->file_name_suffix[$fileExt] : null);
 
-        /* Check if file already exists */
-        if (is_file($newFile . '.' . $this->media)) {
-            $newFile .= '_' . date('Ymd_His');
-        } else {
-            /* If the file does not exist, so need to create directories */
-            if (!is_dir(dirname($newFile . '.' . $this->media))) {
-                if (!mkdir(dirname($newFile . '.' . $this->media), 0777, true)) {
-                    echo dirname($newFile . '.' . $this->media);
-                    throw new Exception('Cannot create sub directories');
+            /* New directory name */
+            $newDirectoryName = $output . DS .
+                    date('Y', $datetime['datetime']) . DS .
+                    date('m', $datetime['datetime']) . DS .
+                    date('d', $datetime['datetime']) . DS;
+
+            /* Check output file directory */
+            if ($this->outputFileDirectory($newDirectoryName)) {
+                /* File name double */
+                if (is_file($newDirectoryName . $newFileNameWithoutExt . '.' . $fileExt)) {
+                    $i = 1;
+
+                    while (is_file($newDirectoryName . $newFileNameWithoutExt . '_' . $i . '.' . $fileExt)) {
+                        $i = $i + 1;
+                    }
+
+                    $newFileNameWithoutExt = $newFileNameWithoutExt . '_' . $i;
+                }
+
+                /* Move file */
+                if (rename($datetime['file'], $newDirectoryName . $newFileNameWithoutExt . '.' . $fileExt)) {
+                    if (!touch($newDirectoryName . $newFileNameWithoutExt . '.' . $fileExt, $datetime['datetime'])) {
+                        $this->errors[] = 'Could not change modified date for ' . $newDirectoryName . $newFileNameWithoutExt . '.' . $fileExt;
+                    }
+                } else {
+                    $this->errors[] = 'Could not move ' . $newDirectoryName . $newFileNameWithoutExt . '.' . $fileExt;
                 }
             }
         }
+    }
 
-        /* Move */
-        if (rename($file, $newFile . '.' . $this->media)) {
-            if (!touch($newFile . '.' . $this->media, $datetime)) {
-                throw new Exception('Cannot change "last date modified" file');
+    /**
+     * 
+     * @param type $directory
+     * @return boolean
+     */
+    private function outputFileDirectory($directory = null)
+    {
+        $continue = true;
+
+        if (!is_dir($directory)) {
+            if (!mkdir($directory, $this->mkdir_mode, true)) {
+                $continue = false;
             }
-        } else {
-            throw new Exception('Cannot move file');
         }
+
+        return $continue;
     }
 
 }
