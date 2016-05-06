@@ -18,7 +18,7 @@ while (!is_dir($input)) {
 }
 
 /* Check output argument */
-if (!in_array($output, array('print', 'file'))) {
+if (!in_array($output, array('print', 'file', 'debug'))) {
     $output = $CliInteractive->ask('Output?', array('print', 'file'), 'print');
 }
 
@@ -35,7 +35,32 @@ try {
 /* Output (user choice) */
 /* Print */
 if ('print' === $output) {
-    print_r($datetimes);
+    foreach ($datetimes as $datetime) {
+        if (!empty($datetime['filename'])) {
+            $datetime['filename'] = date('Y-m-d H:i:s', $datetime['filename']);
+        } else {
+            $datetime['filemane'] = '                   ';
+        }
+
+        if (!empty($datetime['exif_datetimeoriginal'])) {
+            $datetime['exif_datetimeoriginal'] = date('Y-m-d H:i:s', $datetime['exif_datetimeoriginal']);
+        } else {
+            $datetime['exif_datetimeoriginal'] = '                   ';
+        }
+
+        if (!empty($datetime['exif_filedatetime'])) {
+            $datetime['exif_filedatetime'] = date('Y-m-d H:i:s', $datetime['exif_filedatetime']);
+        } else {
+            $datetime['exif_filedatetime'] = '                   ';
+        }
+
+        $datetime['modified'] = date('Y-m-d H:i:s', $datetime['modified']);
+
+        $CliInteractive->display(implode("\t", $datetime));
+    }
+
+    $CliInteractive->display(null);
+    $CliInteractive->display(count($datetimes) . ' element(s) found');
 }
 
 /* File */
@@ -51,9 +76,18 @@ if ('file' === $output) {
             }
 
             foreach ($datetimes as $datetime) {
-                $datetime['filename'] = date('Y-m-d H:i:s', $datetime['filename']);
-                $datetime['exif_datetimeoriginal'] = date('Y-m-d H:i:s', $datetime['exif_datetimeoriginal']);
-                $datetime['exif_filedatetime'] = date('Y-m-d H:i:s', $datetime['exif_filedatetime']);
+                if (!empty($datetime['filename'])) {
+                    $datetime['filename'] = date('Y-m-d H:i:s', $datetime['filename']);
+                }
+
+                if (!empty($datetime['exif_datetimeoriginal'])) {
+                    $datetime['exif_datetimeoriginal'] = date('Y-m-d H:i:s', $datetime['exif_datetimeoriginal']);
+                }
+
+                if (!empty($datetime['exif_filedatetime'])) {
+                    $datetime['exif_filedatetime'] = date('Y-m-d H:i:s', $datetime['exif_filedatetime']);
+                }
+
                 $datetime['modified'] = date('Y-m-d H:i:s', $datetime['modified']);
                 $datetime['choice'] = '';
 
