@@ -16,12 +16,6 @@ class MediaSorter
      *
      * @var type 
      */
-    private $input = null;
-
-    /**
-     *
-     * @var type 
-     */
     private $masks = array(
         '(\d{4})/(\d{2})/(\d{2})/(.*).(jpg|dng|mp4)' => array('Y' => 1, 'm' => 2, 'd' => 3),
         '(IMG|VID)_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})((_|~).*)?.(jpg|dng|mp4)' => array('Y' => 2, 'm' => 3, 'd' => 4, 'H' => 5, 'i' => 6, 's' => 7),
@@ -65,11 +59,9 @@ class MediaSorter
             throw new Exception('"Input" option is empty');
         } elseif (!is_dir($input)) {
             throw new Exception('"Input" directory is not valid');
-        } else {
-            $this->input = $input;
         }
 
-        return $this->browse($this->input);
+        return $this->browse($input);
     }
 
     /**
