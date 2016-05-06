@@ -10,7 +10,7 @@ $CliInteractive->display('*** Media Sorter Script ***');
 
 /* Get input argument */
 $input = (!empty($argv[1]) ? $argv[1] : null);
-$output = (!empty($argv[2]) ? $argv[2] : 'print');
+$output = (!empty($argv[2]) ? $argv[2] : null);
 
 /* Ask the input argument if not passed by the script */
 while (!is_dir($input)) {
@@ -18,7 +18,7 @@ while (!is_dir($input)) {
 }
 
 /* Check output argument */
-if (!in_array($output, array('print', 'file', 'debug'))) {
+if (!in_array($output, array('print', 'file'))) {
     $output = $CliInteractive->ask('Output?', array('print', 'file'), 'print');
 }
 
