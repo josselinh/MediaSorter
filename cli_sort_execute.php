@@ -44,4 +44,9 @@ if (false !== $handle) {
     fclose($handle);
 }
 
-$MediaSorter->execute($datetimes, $output);
+try {
+    $MediaSorter->execute($datetimes, $output);
+} catch (Exception $e) {
+    $CliInteractive->error($e->getMessage());
+    exit(-1);
+}
