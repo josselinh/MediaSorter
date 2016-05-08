@@ -28,13 +28,13 @@ class MediaSorter
      * @var type 
      */
     private $mkdir_mode = 0777;
-    
+
     /**
      *
      * @var type 
      */
     private $file_name_prefix = array('jpg' => 'IMG_', 'dng' => 'IMG_', 'mp4' => 'VID_');
-    
+
     /**
      *
      * @var type 
@@ -238,6 +238,11 @@ class MediaSorter
         }
 
         return $continue;
+    }
+
+    public function getErrors()
+    {
+        return $this->errors;
     }
 
 }
